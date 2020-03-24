@@ -1,6 +1,7 @@
 package com.jesse.autotrack.plugin
 
 import com.android.build.gradle.AppExtension
+import com.jesse.autotrack.transforms.AutoTrackTransform
 import com.jesse.autotrack.transforms.TestTransform
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -24,6 +25,7 @@ class AutoTrackPlugin implements Plugin<Project> {
             println("-----------AutoTrackPlugin enable-------------")
             AppExtension appExtension = project.extensions.findByType(AppExtension.class)
             appExtension.registerTransform(new TestTransform())
+            appExtension.registerTransform(new AutoTrackTransform())
         } else {
             println("-----------AutoTrackPlugin disable-------------")
         }

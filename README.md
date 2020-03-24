@@ -190,3 +190,117 @@ appExtension.registerTransform(new TestTransform())
 
 ## 三、ASM
 
+#### 定义
+
+​	ASM是一个功能齐全的字节码操作与分析框架，通过ASM，我们可以通过动态的生成类和改善既有类的功能。
+
+#### 核心类
+
+- ClassReader
+
+  用来解析编译后的 .class字节码文件
+
+- ClassWriter
+
+  用来重新构建编译后的类，比如修改类名，属性和方法，甚至可以生成新的类
+
+- ClassVisitor
+
+  用来拜访类的所有信息，实现类的字节码操作，包括类上的注解，构造方法，属性，方法和静态代码块
+
+- AdviceAdapter
+
+  实现了MethodVisitor接口，用来拜访方法的所有信息，实现方法的字节码操作
+
+#### ClassVisitor
+
+![ClassVisitor](./ClassVisitor.jpg)
+
+##### visit()
+
+该方法是扫描类时第一个会调用的方法，方法的完整定义如下：
+
+```groovy
+void visit(int version, int access, String name, String signature, String superName, String[] interfaces)
+```
+
+version: jdk的版本
+
+access: 类的修饰符
+
+name: 类的名称，类似于a/b/c/MyClass
+
+signature: 范型信息
+
+superName：继承的父类
+
+interfaces：实现的接口数组
+
+##### visitMethod()
+
+该方法是扫描方法的时候会调用的，完整定义如下：
+
+```groovy
+public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions)
+```
+
+access: 修饰符，例如ACC_PUBLIC
+
+name：方法名
+
+desc：方法签名，即“（参数列表）返回值类型”。 注意“Z” 代表boolean , "J"代表Long
+
+signature: 范型信息
+
+exceptions：抛出的异常信息，没有异常则为空
+
+#### 实践
+
+我们在上一节中自定义的Transform中的modifyClass方法中修改字节码，代码如下：
+
+```groovy
+@Override
+byte[] modifyClass(byte[] srcClass) throws IOException {
+    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS)
+    ClassVisitor classVisitor = new AutoTrackClassVisitor(classWriter)
+    ClassReader cr = new ClassReader(srcClass)
+    cr.accept(classVisitor, ClassReader.SKIP_FRAMES)
+    return classWriter.toByteArray()
+}
+```
+
+我们主要看AutoTrackClassVisitor类的实现：
+
+```groovy
+@Override
+void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+    super.visit(version, access, name, signature, superName, interfaces)
+    mInterfaces = interfaces
+}
+
+@Override
+MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+    MethodVisitor methodVisitor = super.visitMethod(access, name, desc, signature, exceptions)
+
+    String nameDesc = name + desc
+
+    methodVisitor = new AutoTrackDefaultMethodVisitor(methodVisitor, access, name, desc) {
+
+
+        @Override
+        protected void onMethodExit(int opcode) {
+            super.onMethodExit(opcode)
+
+            if ((mInterfaces != null && mInterfaces.length > 0)) {
+                if ((mInterfaces.contains('android/view/View$OnClickListener') && nameDesc == 'onClick(Landroid/view/View;)V')) {
+                    methodVisitor.visitVarInsn(ALOAD, 1)
+                    methodVisitor.visitMethodInsn(INVOKESTATIC, SDK_API_CLASS, "trackViewOnClick", "(Landroid/view/View;)V", false)
+                }
+            }
+        }
+    }
+    return methodVisitor
+}
+```
+
+可以看到我们首先会从visit方法中拿到所有实现的接口，然后再在visitMethod方法中返回一个自定义的MethodVisitor对象，在方法出口处插桩，实现了OnClickListener接口，onClick方法返回之前插入一段代码
