@@ -1,2 +1,2 @@
-include ':app', ':plugin'
+include ':app', ':plugin', ':sdk'
 rootProject.name='AutoTrackAppClick'

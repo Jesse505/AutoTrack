@@ -84,3 +84,109 @@ class PluginConfig {
    > Task :app:testTask
    > hello testTask true
 
+## 二、自定义Transform
+
+#### 定义
+
+​	Transform 是Android 官方提供给开发者在项目编译阶段，也就是.class到.dex转换期间，用来修改.class的一套标准API，目前比较经典的就是字节码插桩和代码注入，概括的说就是**把输入的.class文件转换为目标字节码**
+
+#### 主要方法
+
+```groovy
+    /**
+     * 需要处理的数据类型，有两种枚举类型
+     * CLASSES 代表处理的 java 的 class 文件，RESOURCES 代表要处理 java 的资源
+     * @return
+     */
+    @Override
+    Set<QualifiedContent.ContentType> getInputTypes() {
+        return TransformManager.CONTENT_CLASS
+    }
+
+    /**
+     * 指 Transform 要操作内容的范围，官方文档 Scope 有 7 种类型：
+     * 1. EXTERNAL_LIBRARIES        只有外部库
+     * 2. PROJECT                   只有项目内容
+     * 3. PROJECT_LOCAL_DEPS        只有项目的本地依赖(本地jar)
+     * 4. PROVIDED_ONLY             只提供本地或远程依赖项
+     * 5. SUB_PROJECTS              只有子项目。
+     * 6. SUB_PROJECTS_LOCAL_DEPS   只有子项目的本地依赖项(本地jar)。
+     * 7. TESTED_CODE               由当前变量(包括依赖项)测试的代码
+     * @return
+     */
+    @Override
+    Set<QualifiedContent.Scope> getScopes() {
+        return TransformManager.SCOPE_FULL_PROJECT
+    }
+
+    /**
+     * 是否是增量编译
+     * @return
+     */
+    @Override
+    boolean isIncremental() {
+        return false
+    }
+
+    /**
+     * 字节码转换的主要逻辑
+     * @param transformInvocation
+     * @throws TransformException
+     * @throws InterruptedException
+     * @throws IOException
+     */
+    @Override
+    void transform(TransformInvocation transformInvocation) throws TransformException,InterruptedException, IOException {
+        println("-----------transform >>>>>>>>> 开始-----------" + getName())
+        _transform(transformInvocation.context, transformInvocation.inputs,
+                transformInvocation.outputProvider, transformInvocation.incremental)
+    }
+  
+```
+
+#### 主要流程
+
+![transform](./transform.jpg)
+
+可以看到我们需要**重写transform()方法，在其中我们首先需要判断是否是增量更新，如果不是增量更新，也就是全量更新的话，需要先删除全部输出outputProvider.deleteAll()，接着再去遍历输入，输入主要分为目录和Jar文件的遍历，最终的处理方式都是一样的，找到合适的hook点，通过ASM的方式修改.class文件，最后再拷贝回去**，根据Transform的处理流程，我抽象出来了一个BaseTransform类，以后自定义Transform只需要继承这个类的三个方法，不需要关注中间的文件的处理过程：
+
+```groovy
+class TestTransform extends BaseTransform {
+    /**
+     * 过滤需要修改的class文件
+     * @param className
+     * @return
+     */
+    @Override
+    boolean isShouldModify(String className) {
+        return false
+    }
+		/**
+     * 修改class文件
+     * @param srcClass 源class
+     * @return 目标class
+     * @throws IOException
+     */
+    @Override
+    byte[] modifyClass(byte[] srcClass) throws IOException {
+        return srcClass
+    }
+
+    @Override
+    String getName() {
+        return "TestTransform"
+    }
+}
+```
+
+#### 注册Transform
+
+自定义一个gradle插件，在apply方法中，通过AppExtension的registerTransform来注册Transform
+
+```groovy
+AppExtension appExtension = project.extensions.findByType(AppExtension.class)
+appExtension.registerTransform(new TestTransform())
+```
+
+## 三、ASM
+
