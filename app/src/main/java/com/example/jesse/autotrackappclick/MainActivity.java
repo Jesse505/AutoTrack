@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
                 showToast("普通 setOnClickListener");
             }
         });
+        findViewById(R.id.lambdaButton).setOnClickListener(v -> showToast("lambda表达式绑定onClick"));
     }
 
     @SensorsDataTrackViewOnClick

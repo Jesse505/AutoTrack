@@ -1,3 +1,5 @@
+[TOC]
+
 ## 一、自定义Gradle插件
 
 1. 新建一个module，将build.gradle改为以下代码：
@@ -254,7 +256,7 @@ signature: 范型信息
 
 exceptions：抛出的异常信息，没有异常则为空
 
-#### 实践
+#### onClick事件无痕埋点
 
 我们在上一节中自定义的Transform中的modifyClass方法中修改字节码，代码如下：
 
@@ -304,3 +306,99 @@ MethodVisitor visitMethod(int access, String name, String desc, String signature
 ```
 
 可以看到我们首先会从visit方法中拿到所有实现的接口，然后再在visitMethod方法中返回一个自定义的MethodVisitor对象，在方法出口处插桩，实现了OnClickListener接口，onClick方法返回之前插入一段代码
+
+#### 完善
+
+##### 支持通过android:onClick属性绑定的点击事件
+
+由于这种方式是通过在运行时反射的方式调用响应函数的，所以我们需要使用注解匹配的方法，匹配到响应函数，再进行hook操作。
+
+```groovy
+@Override
+AnnotationVisitor visitAnnotation(String s, boolean b) {
+    //扫描到自定义注解
+    if (s == 'Lcom/sensorsdata/analytics/android/sdk/SensorsDataTrackViewOnClick;') {
+        isSensorsDataTrackViewOnClickAnnotation = true
+    }
+    return super.visitAnnotation(s, b)
+}
+
+```
+
+```groovy
+@Override
+protected void onMethodExit(int opcode) {
+    super.onMethodExit(opcode)
+    //hook 注解SensorsDataTrackViewOnClick标识的方法，为了解决在xml中注册的方法无法在编译期间hook的问题，只能通过手动添加自定义注解
+    if (isSensorsDataTrackViewOnClickAnnotation) {
+        if (desc == '(Landroid/view/View;)V') {
+            methodVisitor.visitVarInsn(ALOAD, 1)
+            methodVisitor.visitMethodInsn(INVOKESTATIC, SDK_API_CLASS, "trackViewOnClick", "(Landroid/view/View;)V", false)
+            return
+        }
+    }
+}
+```
+
+##### 支持lambda表达式
+
+访问lambda表达式的时候，会调用INVOKEDYNAMIC指令，调用visitInvokeDynamicInsn方法，在其中，先获取自定义的内部类方法的hook对象，然后将hook对象缓存到map里，key值为lambda方法
+
+```groovy
+/**
+ * 访问INVOKEDYNAMIC指令，访问lambda表达式的时候调用
+ */
+@Override
+void visitInvokeDynamicInsn(String name1, String desc1, Handle bsm, Object... bsmArgs) {
+    super.visitInvokeDynamicInsn(name1, desc1, bsm, bsmArgs)
+
+    try {
+        String desc2 = (String) bsmArgs[0]
+        //获取内部类方法的hook对象，比如onClick
+        AutoTrackMethodCell sensorsAnalyticsMethodCell = AutoTrackHookConfig.LAMBDA_METHODS.get(Type.getReturnType(desc1).getDescriptor() + name1 + desc2)
+        if (sensorsAnalyticsMethodCell != null) {
+            Handle it = (Handle) bsmArgs[1]
+            //将hook对象缓存到map里，key值为lambda方法，例如lambda$onCreate$0
+            mLambdaMethodCells.put(it.name + it.desc, sensorsAnalyticsMethodCell)
+        }
+    } catch (Exception e) {
+        e.printStackTrace()
+    }
+}
+```
+
+接着我们需要在对应的lambda方法出口，写入相关的切面代码
+
+```groovy
+@Override
+protected void onMethodExit(int opcode) {
+    super.onMethodExit(opcode)
+
+    //处理lambda表达式的hook
+    AutoTrackMethodCell lambdaMethodCell = mLambdaMethodCells.get(nameDesc)
+    if (lambdaMethodCell != null) {
+        Type[] types = Type.getArgumentTypes(lambdaMethodCell.desc)
+        int length = types.length
+        Type[] lambdaTypes = Type.getArgumentTypes(desc)
+        int paramStart = lambdaTypes.length - length
+        //过滤参数不一致的方法
+        if (paramStart < 0) {
+            return
+        } else {
+            for (int i = 0; i < length; i++) {
+                if (lambdaTypes[paramStart + i].descriptor != types[i].descriptor) {
+                    return
+                }
+            }
+        }
+        //加载参数，类似mv.visitVarInsn(ALOAD, 0)
+        boolean isStaticMethod = AutoTrackUtils.isStatic(access)
+        for (int i = paramStart; i < paramStart + lambdaMethodCell.paramsCount; i++) {
+            methodVisitor.visitVarInsn(lambdaMethodCell.opcodes.get(i - paramStart), AutoTrackUtils.getVisitPosition(lambdaTypes, i, isStaticMethod))
+        }
+        //加载方法
+        methodVisitor.visitMethodInsn(INVOKESTATIC, SDK_API_CLASS, lambdaMethodCell.agentName, lambdaMethodCell.agentDesc, false)
+        return
+    }
+}
+```

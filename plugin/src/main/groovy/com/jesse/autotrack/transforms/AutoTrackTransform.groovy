@@ -1,5 +1,6 @@
 package com.jesse.autotrack.transforms
 
+import com.jesse.autotrack.visitor.AutoTrackClassVisitor
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
