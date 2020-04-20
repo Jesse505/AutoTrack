@@ -28,17 +28,36 @@ class AutoTrackClassVisitor extends ClassVisitor implements Opcodes {
 
         methodVisitor = new AutoTrackDefaultMethodVisitor(methodVisitor, access, name, desc) {
 
+            boolean isSensorsDataTrackViewOnClickAnnotation = false
 
             @Override
             protected void onMethodExit(int opcode) {
                 super.onMethodExit(opcode)
 
                 if ((mInterfaces != null && mInterfaces.length > 0)) {
+                    //Hook 普通的setOnClickListener中的onClick方法
                     if ((mInterfaces.contains('android/view/View$OnClickListener') && nameDesc == 'onClick(Landroid/view/View;)V')) {
                         methodVisitor.visitVarInsn(ALOAD, 1)
                         methodVisitor.visitMethodInsn(INVOKESTATIC, SDK_API_CLASS, "trackViewOnClick", "(Landroid/view/View;)V", false)
                     }
                 }
+
+                //hook 注解SensorsDataTrackViewOnClick标识的方法，为了解决在xml中注册的方法无法在编译期间hook的问题，只能通过手动添加自定义注解
+                if (isSensorsDataTrackViewOnClickAnnotation) {
+                    if (desc == '(Landroid/view/View;)V') {
+                        methodVisitor.visitVarInsn(ALOAD, 1)
+                        methodVisitor.visitMethodInsn(INVOKESTATIC, SDK_API_CLASS, "trackViewOnClick", "(Landroid/view/View;)V", false)
+                        return
+                    }
+                }
+            }
+
+            @Override
+            AnnotationVisitor visitAnnotation(String s, boolean b) {
+                if (s == 'Lcom/sensorsdata/analytics/android/sdk/SensorsDataTrackViewOnClick;') {
+                    isSensorsDataTrackViewOnClickAnnotation = true
+                }
+                return super.visitAnnotation(s, b)
             }
         }
         return methodVisitor

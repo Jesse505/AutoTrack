@@ -12,6 +12,7 @@ class AutoTrackTransform extends BaseTransform {
     boolean isShouldModify(String className) {
         exclude.add('android.support')
         exclude.add('com.sensorsdata.analytics.android.sdk')
+        exclude.add('androidx')
 
         Iterator<String> iterator = exclude.iterator()
         while (iterator.hasNext()) {

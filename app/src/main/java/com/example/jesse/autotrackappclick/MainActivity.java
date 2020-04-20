@@ -6,17 +6,29 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 
+import com.sensorsdata.analytics.android.sdk.SensorsDataTrackViewOnClick;
+
 public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        findViewById(R.id.tv_test).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "普通button点击事件", Toast.LENGTH_SHORT).show();
+                showToast("普通 setOnClickListener");
             }
         });
     }
+
+    @SensorsDataTrackViewOnClick
+    public void xmlOnClick(View view) {
+        showToast("android:onClick 绑定 OnClickListener");
+    }
+
+    private void showToast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
 }
