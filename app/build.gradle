@@ -1,6 +1,7 @@
 apply plugin: 'com.android.application'
 apply plugin: 'com.jesse.testplugin'
 apply plugin: 'com.jesse.trackplugin'
+apply plugin: 'com.jesse.replaceplugin'
 
 android {
     compileSdkVersion 28
@@ -36,3 +37,5 @@ dependencies {
 config {
     debug true
 }
+
+

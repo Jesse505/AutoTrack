@@ -74,6 +74,9 @@ abstract class BaseTransform extends Transform {
         inputs.each { TransformInput input ->
             /**遍历目录*/
             input.directoryInputs.each { DirectoryInput directoryInput ->
+                directoryInput.changedFiles.each {
+
+                }
                 /**当前这个 Transform 输出目录*/
                 File dest = outputProvider.getContentLocation(directoryInput.name,
                         directoryInput.contentTypes, directoryInput.scopes, Format.DIRECTORY)

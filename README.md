@@ -150,14 +150,14 @@ class PluginConfig {
 
 ![transform](./transform.jpg)
 
-可以看到我们需要**重写transform()方法，在其中我们首先需要判断是否是增量更新，如果不是增量更新，也就是全量更新的话，需要先删除全部输出outputProvider.deleteAll()，接着再去遍历输入，输入主要分为目录和Jar文件的遍历，最终的处理方式都是一样的，找到合适的hook点，通过ASM的方式修改.class文件，最后再拷贝回去**，根据Transform的处理流程，我抽象出来了一个BaseTransform类，以后自定义Transform只需要继承这个类的三个方法，不需要关注中间的文件的处理过程：
+可以看到我们需要**重写transform()方法，在其中我们首先需要判断是否是增量更新，如果不是增量更新，也就是全量更新的话，需要先删除全部输出outputProvider.deleteAll()，接着再去遍历输入，输入主要分为目录和Jar文件的遍历，最终的处理方式都是一样的，找到合适的hook点，通过ASM的方式修改.class文件，最后再拷贝回去**，根据Transform的处理流程，我抽象出来了一个BaseTransform类，以后自定义Transform只需要继承这个类重写以下的三个方法，不需要关注中间的文件的处理过程：
 
 ```groovy
 class TestTransform extends BaseTransform {
     /**
      * 过滤需要修改的class文件
      * @param className
-     * @return
+     * @return true:需要修改 false:不需要修改
      */
     @Override
     boolean isShouldModify(String className) {
@@ -305,13 +305,13 @@ MethodVisitor visitMethod(int access, String name, String desc, String signature
 }
 ```
 
-可以看到我们首先会从visit方法中拿到所有实现的接口，然后再在visitMethod方法中返回一个自定义的MethodVisitor对象，在方法出口处插桩，实现了OnClickListener接口，onClick方法返回之前插入一段代码
+可以看到我们首先会从visit方法中拿到所有实现的接口，然后再在visitMethod方法中返回一个自定义的MethodVisitor对象，在方法出口处插桩，在实现了OnClickListener接口的onClick方法返回之前插入一段埋点统计的代码。这样一个常规点击事件的埋点就完成了，是的，就是这么简单，其实这也是使用 ASM 进行 AOP 最难也最最核心的地方。**在哪个类做 hook，在哪个方法内做 hook，在方法的哪个位置做 hook，ASM 发展至今已经提供了非常多的方法和 API，可以供开发者调用，但是如何用字节码实现一些特定逻辑，就比较难了**。这里说难呢，其实也不难，我们可以借助类似 [asm-bytecode-outline](https://plugins.jetbrains.com/plugin/5918-asm-bytecode-outline) 这样的插件非常方便的帮助我们生成 java 代码对应的字节码。上面的 hook方法其实就是用这个插件生成的。
 
 #### 完善
 
 ##### 支持通过android:onClick属性绑定的点击事件
 
-由于这种方式是通过在运行时反射的方式调用响应函数的，所以我们需要使用注解匹配的方法，匹配到响应函数，再进行hook操作。
+由于这种方式是通过在运行时反射的方式调用响应函数的，所以我们需要使用注解匹配的方法，匹配到相应函数，再进行hook操作。
 
 ```groovy
 @Override
@@ -402,3 +402,4 @@ protected void onMethodExit(int opcode) {
     }
 }
 ```
+

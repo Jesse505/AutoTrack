@@ -2,10 +2,12 @@ package com.example.jesse.autotrackappclick;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 
+import com.sensorsdata.analytics.android.sdk.SensorsDataAutoTrackHelper;
 import com.sensorsdata.analytics.android.sdk.SensorsDataTrackViewOnClick;
 
 public class MainActivity extends AppCompatActivity {
@@ -20,12 +22,18 @@ public class MainActivity extends AppCompatActivity {
                 showToast("普通 setOnClickListener");
             }
         });
-        findViewById(R.id.lambdaButton).setOnClickListener(v -> showToast("lambda表达式绑定onClick"));
+        findViewById(R.id.lambdaButton).setOnClickListener(v -> {
+            showToast("lambda表达式绑定onClick");
+            SensorsDataAutoTrackHelper.trackViewOnClick(v);
+        });
     }
 
     @SensorsDataTrackViewOnClick
     public void xmlOnClick(View view) {
         showToast("android:onClick 绑定 OnClickListener");
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.putExtra("key", "666");
+        startActivity(intent);
     }
 
     private void showToast(String message) {
