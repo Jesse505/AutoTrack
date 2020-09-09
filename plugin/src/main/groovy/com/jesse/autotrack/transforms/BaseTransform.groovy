@@ -60,8 +60,10 @@ abstract class BaseTransform extends Transform {
     void transform(TransformInvocation transformInvocation) throws TransformException,
             InterruptedException, IOException {
         println("-----------transform >>>>>>>>> 开始-----------" + getName())
+        onBeforeTransform()
         _transform(transformInvocation.context, transformInvocation.inputs,
                 transformInvocation.outputProvider, transformInvocation.incremental)
+        onAfterTransform()
     }
 
     void _transform(Context context, Collection<TransformInput> inputs, TransformOutputProvider outputProvider,
@@ -230,5 +232,8 @@ abstract class BaseTransform extends Transform {
      */
     abstract byte[] modifyClass(byte[] srcClass) throws IOException;
 
+    void onBeforeTransform() {};
+
+    void onAfterTransform() {};
 
 }

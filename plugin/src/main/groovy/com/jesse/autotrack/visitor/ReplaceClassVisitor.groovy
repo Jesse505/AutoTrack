@@ -1,11 +1,16 @@
 package com.jesse.autotrack.visitor
 
+import com.jesse.autotrack.Log
+import com.jesse.autotrack.ReplaceBuildConfig
 import org.objectweb.asm.*
 
 class ReplaceClassVisitor extends ClassVisitor implements Opcodes {
 
-    ReplaceClassVisitor(final ClassVisitor classVisitor) {
+    ReplaceBuildConfig mReplaceBuildConfig
+
+    ReplaceClassVisitor(final ClassVisitor classVisitor, ReplaceBuildConfig replaceBuildConfig) {
         super(Opcodes.ASM6, classVisitor)
+        mReplaceBuildConfig = replaceBuildConfig
     }
 
     @Override
@@ -16,32 +21,35 @@ class ReplaceClassVisitor extends ClassVisitor implements Opcodes {
     @Override
     MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
         MethodVisitor methodVisitor = super.visitMethod(access, name, desc, signature, exceptions)
-        return new ReplaceMethodVisitor(methodVisitor)
+        return new ReplaceMethodVisitor(methodVisitor, mReplaceBuildConfig)
     }
 
     static class ReplaceMethodVisitor extends MethodVisitor {
 
-        ReplaceMethodVisitor(MethodVisitor mv) {
+        ReplaceBuildConfig mReplaceBuildConfig
+
+        ReplaceMethodVisitor(MethodVisitor mv, ReplaceBuildConfig replaceBuildConfig) {
             super(Opcodes.ASM6, mv)
+            mReplaceBuildConfig = replaceBuildConfig
         }
 
         @Override
         void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
 
-            println("-----------ReplaceClassVisitor > visitMethodInsn-------------")
-
-            if ('android/content/Intent' == owner && 'getStringExtra' == name) {
-                println("-----------ReplaceClassVisitor > visitMethodInsn > android/content/Intent-------------")
-                super.visitMethodInsn(INVOKESTATIC, "com/example/jesse/autotrackappclick/IntentUtil",
-                        "getString", "(Landroid/content/Intent;Ljava/lang/String;)Ljava/lang/String;", false)
-            } else if ('android/widget/Toast' == owner && 'show' == name) {
-                println("-----------ReplaceClassVisitor > visitMethodInsn > android/widget/Toast-------------")
-                super.visitMethodInsn(INVOKESTATIC, "com/example/jesse/autotrackappclick/ToastUtil",
-                        "showToast", "(Landroid/widget/Toast;)V", false)
-            } else {
-                super.visitMethodInsn(opcode, owner, name, desc, itf)
+            if (!mReplaceBuildConfig.getmReplaceMents().isEmpty()) {
+                for (int i = 0; i < mReplaceBuildConfig.getmReplaceMents().size(); i++) {
+                    ReplaceBuildConfig.ReplaceMent replaceMent = mReplaceBuildConfig.getmReplaceMents().get(i)
+                    if (owner == replaceMent.getSrcClass() && name == replaceMent.getSrcMethodName()
+                            && desc == replaceMent.getSrcMethodDesc()) {
+                        Log.i("ReplaceClassVisitor", "" + replaceMent.toString())
+                        super.visitMethodInsn(INVOKESTATIC, replaceMent.getDstClass(),
+                                replaceMent.getDstMethodName(), replaceMent.getDstMethodDesc(), false)
+                        return
+                    }
+                }
             }
 
+            super.visitMethodInsn(opcode, owner, name, desc, itf)
         }
     }
 
