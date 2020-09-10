@@ -140,6 +140,9 @@ abstract class BaseTransform extends Transform {
     }
 
     File modifyClassFile(File dir, File classFile, File tempDir) {
+        if (!isModifyEnable()) {
+            return null
+        }
         File modified = null
         try {
             String className = path2ClassName(classFile.absolutePath.replace(dir.absolutePath + File.separator, ""))
@@ -165,6 +168,9 @@ abstract class BaseTransform extends Transform {
     }
 
     File modifyJar(File jarFile, File tempDir, boolean nameHex) {
+        if (!isModifyEnable()) {
+            return null
+        }
         /**
          * 读取原 jar
          */
@@ -231,6 +237,14 @@ abstract class BaseTransform extends Transform {
      * @throws IOException
      */
     abstract byte[] modifyClass(byte[] srcClass) throws IOException;
+
+    /**
+     * 字节码修改是否开启，默认开启
+     * @return
+     */
+    boolean isModifyEnable() {
+        return true
+    }
 
     void onBeforeTransform() {};
 

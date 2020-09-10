@@ -1,6 +1,6 @@
 package com.jesse.autotrack.transforms
 
-import com.jesse.autotrack.Log
+
 import com.jesse.autotrack.ReplaceBuildConfig
 import com.jesse.autotrack.extension.ReplaceExtension
 import com.jesse.autotrack.visitor.ReplaceClassVisitor
@@ -64,11 +64,11 @@ class ReplaceTransform extends BaseTransform {
         final ReplaceBuildConfig replaceConfig = initConfig()
         replaceConfig.parseReplaceFile()
         replaceBuildConfig = replaceConfig
-        if (replaceExtension.enable) {
-            Log.i("zyf", "enable true")
-        } else {
-            Log.i("zyf", "enable false")
-        }
+    }
+
+    @Override
+    boolean isModifyEnable() {
+        return replaceExtension.enable
     }
 
     private ReplaceBuildConfig initConfig() {

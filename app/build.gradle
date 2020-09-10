@@ -39,6 +39,6 @@ config {
 }
 
 replace {
-    enable = false
+    enable = true
     replaceListDir = "${project.projectDir}/ReplaceMethodList.txt"
 }
