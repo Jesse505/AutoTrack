@@ -2,6 +2,7 @@ package com.jesse.autotrack.transforms
 
 import com.android.build.api.transform.*
 import com.android.build.gradle.internal.pipeline.TransformManager
+import com.jesse.autotrack.Log
 import groovy.io.FileType
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
@@ -92,7 +93,8 @@ abstract class BaseTransform extends Transform {
                     /**遍历以某一扩展名结尾的文件*/
                     dir.traverse(type: FileType.FILES, nameFilter: ~/.*\.class/) {
                         File classFile ->
-                            if (isShouldModify(classFile.name)) {
+                            String className = classFile.absolutePath.replace(dir.absolutePath + File.separator, "")
+                            if (isShouldModify(className)) {
                                 File modified = modifyClassFile(dir, classFile, context.getTemporaryDir())
                                 if (modified != null) {
                                     /**key 为包名 + 类名，如：/cn/sensorsdata/autotrack/android/app/MainActivity.class*/
@@ -198,16 +200,13 @@ abstract class BaseTransform extends Transform {
             if (entryName.endsWith(".DSA") || entryName.endsWith(".SF")) {
                 //ignore
             } else {
-                String className
                 JarEntry jarEntry2 = new JarEntry(entryName)
                 jarOutputStream.putNextEntry(jarEntry2)
 
                 byte[] modifiedClassBytes = null
                 byte[] sourceClassBytes = IOUtils.toByteArray(inputStream)
                 if (entryName.endsWith(".class")) {
-                    className = entryName.replace(Matcher.quoteReplacement(File.separator), ".")
-                            .replace(".class", "")
-                    if (isShouldModify(className)) {
+                    if (isShouldModify(entryName)) {
                         modifiedClassBytes = modifyClass(sourceClassBytes)
                     }
                 }
@@ -225,7 +224,7 @@ abstract class BaseTransform extends Transform {
 
     /**
      * 过滤需要修改的class文件
-     * @param className
+     * @param className eg: cn/sensorsdata/autotrack/android/app/MainActivity.class
      * @return
      */
     abstract boolean isShouldModify(String className);

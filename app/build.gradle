@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'com.jesse.testplugin'
 apply plugin: 'com.jesse.trackplugin'
 apply plugin: 'com.jesse.replaceplugin'
+apply plugin: 'com.jesse.buildplugin'
 
 android {
     compileSdkVersion 28

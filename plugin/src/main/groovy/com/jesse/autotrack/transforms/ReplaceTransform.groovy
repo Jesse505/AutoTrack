@@ -21,7 +21,6 @@ class ReplaceTransform extends BaseTransform {
     @Override
     boolean isShouldModify(String className) {
         exclude.add('android.support')
-        exclude.add('com.sensorsdata.analytics.android.sdk')
         exclude.add('androidx')
 
         Iterator<String> iterator = exclude.iterator()
@@ -36,11 +35,17 @@ class ReplaceTransform extends BaseTransform {
                 className.contains('R2$') ||
                 className.contains('R.class') ||
                 className.contains('R2.class') ||
-                className.contains('BuildConfig.class') ||
-                className.contains('IntentUtil.class') ||
-                className.contains('ToastUtil.class')) {
+                className.contains('BuildConfig.class')) {
             return false
         }
+
+        for (int i = 0; i < replaceBuildConfig?.mReplaceMents?.size(); i++) {
+            if (replaceBuildConfig?.mReplaceMents?.get(i)?.dstClass ==
+                    className.replace(".class", "")) {
+                return false
+            }
+        }
+
         return true
     }
 
